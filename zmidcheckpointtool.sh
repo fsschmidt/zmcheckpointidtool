@@ -13,9 +13,9 @@ while read MID ACCOUNT CHECKPOINT GROUP
 
 do
 
-BIGGESTID=`mysql -N -e "SELECT id FROM mail_item WHERE mailbox_id="$MID" ORDER BY id DESC LIMIT 1" mboxgroup$GROUP`
+BIGGESTID=`mysql -N -e "SELECT MAX(id) FROM mail_item WHERE mailbox_id=$MID" mboxgroup$GROUP`
     if [ $BIGGESTID -gt $CHECKPOINT ] ; then
     echo "$ACCOUNT"
-    else
+	fi
 done < /tmp/all_checkpoints.txt
     IFS=$OLDIFS
