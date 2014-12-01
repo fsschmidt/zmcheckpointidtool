@@ -57,9 +57,10 @@ BIGGESTID=`mysql -N -e "SELECT MAX(id) FROM mail_item WHERE mailbox_id=$MID" mbo
     	if [ "$FIX" = "true" ] ; then
     		NEWCHECKPOINT=`expr $BIGGESTID + 100`
     		mysql -e "UPDATE zimbra.mailbox SET item_id_checkpoint=$NEWCHECKPOINT WHERE id='$MID' AND comment='$ACCOUNT'"
-    		echo "$ACCOUNT item_id_checkpoint updated to: $NEWCHECKPOINT"
+    		echo "$ACCOUNT item_id_checkpoint updated. Old value: $CHECKPOINT | New value: $NEWCHECKPOINT"
 		fi
 	fi
 done < /tmp/all_checkpoints.txt
+echo "You must restart mailboxd for any changes to take effect. If you did not make any changes, you do not need to restart mailboxd."
     IFS=$OLDIFS
 
