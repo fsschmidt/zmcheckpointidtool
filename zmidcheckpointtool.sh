@@ -21,8 +21,6 @@ while getopts 'm:f' flag; do
 	esac
 done
 
-echo "$MAILBOX"
-
 #WARN ON FIX
 if [ "$FIX" = "true" ]; then
 	if [[ "no" == $(ask_yes_or_no "This will make changes to the mySQL databse. Are you sure you want to") ]] ; then
