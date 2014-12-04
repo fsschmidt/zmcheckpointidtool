@@ -61,7 +61,7 @@ BIGGESTID=`mysql -N -e "SELECT MAX(id) FROM mail_item WHERE mailbox_id=$MID" mbo
         
         if [ "$FIX" = "true" ] ; then
             echo "ma $ACCOUNT zimbraAccountStatus maintenance" >> /tmp/maintenanceaccounts.txt
-            cat /tmp/maintenanceaccounts.txt |sed "s/maintenance/active/" >> /tmp/reactivateaccounts.txt
+            
         
         fi
 	fi
@@ -69,7 +69,7 @@ done < /tmp/all_checkpoints.txt
 
 #second loop if fixing accounts, using zmprov commands
 if [ "$FIX" = "true" ] ; then
-
+    cat /tmp/maintenanceaccounts.txt |sed "s/maintenance/active/" >> /tmp/reactivateaccounts.txt
     echo "Putting affected accounts in maintenance mode"
     zmprov < /tmp/maintenanceaccounts.txt
     echo "Done."
