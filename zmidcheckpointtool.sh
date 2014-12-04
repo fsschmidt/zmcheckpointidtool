@@ -44,21 +44,57 @@ fi
 OLDIFS=$IFS
 IFS=","
 
+#touch zmprov command files
+touch /tmp/affectedaccounts.txt 2>&1
+touch /tmp/maintenanceaccounts.txt 2>&1
+touch /tmp/reactivateaccounts.txt 2>&1
+
 #read file line by line, assigning values from csv
 while read MID ACCOUNT CHECKPOINT GROUP
 
 do
-
+#first loop to ID accounts and create zmprov commands if necessary
 BIGGESTID=`mysql -N -e "SELECT MAX(id) FROM mail_item WHERE mailbox_id=$MID" mboxgroup$GROUP`
     if [ $BIGGESTID -gt $CHECKPOINT ] ; then
     	echo "$ACCOUNT"
-    	if [ "$FIX" = "true" ] ; then
-    		NEWCHECKPOINT=`expr $BIGGESTID + 100`
-    		mysql -e "UPDATE zimbra.mailbox SET item_id_checkpoint=$NEWCHECKPOINT WHERE id='$MID' AND comment='$ACCOUNT'"
-    		echo "$ACCOUNT item_id_checkpoint updated. Old value: $CHECKPOINT | New value: $NEWCHECKPOINT"
-		fi
+        echo "$MID,$ACCOUNT,$CHECKPOINT,$GROUP,$BIGGESTID" >> /tmp/affectedaccounts.txt
+        
+        if [ "$FIX" = "true" ] ; then
+            echo "ma $ACCOUNT zimbraAccountStatus maintenance" >> /tmp/maintenanceaccounts.txt
+            cat /tmp/maintenanceaccounts.txt |sed "s/maintenance/active/" >> /tmp/reactivateaccounts.txt
+        
+        fi
 	fi
 done < /tmp/all_checkpoints.txt
-echo "You must restart mailboxd for any changes to take effect. If you did not make any changes, you do not need to restart mailboxd."
-    IFS=$OLDIFS
 
+#second loop if fixing accounts, using zmprov commands
+if [ "$FIX" = "true" ] ; then
+
+    echo "Putting affected accounts in maintenance mode"
+    zmprov < /tmp/maintenanceaccounts.txt
+    echo "Done."
+    echo "Fixing affected accounts"
+    while read MID1 ACCOUNT1 CHECKPOINT1 GROUP1 BIGGESTID1
+
+    do
+            NEWCHECKPOINT=`expr $BIGGESTID1 + 100`
+            mysql -e "UPDATE zimbra.mailbox SET item_id_checkpoint=$NEWCHECKPOINT WHERE id='$MID1' AND comment='$ACCOUNT1'"
+            echo "$ACCOUNT item_id_checkpoint updated. Old value: $CHECKPOINT1 | New value: $NEWCHECKPOINT"
+            echo "Reloading $ACCOUNT1 . . ."
+            #echo "ACCOUNT 1: $ACCOUNT1"
+            zmsoap -A -z UnloadMailboxRequest/account @name="$ACCOUNT1"
+    done < /tmp/affectedaccounts.txt
+    echo "Reactivating Affected accounts"
+    zmprov < /tmp/reactivateaccounts.txt
+    echo "done"
+fi
+echo "cleaning up tempoary files"
+rm -f /tmp/all_checkpoints.txt 2>&1
+rm -f /tmp/maintenanceaccounts.txt 2>&1
+rm -f /tmp/reactivateaccounts.txt 2>&1
+echo "Done."
+
+echo "You can see a list of all affected accounts in the file /tmp/affectedaccounts.txt"
+echo "ID Checkpoint Script complete. Exiting."
+IFS=$OLDIFS
+exit 0
